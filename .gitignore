@@ -12,7 +12,7 @@ venv/
 env/
 
 # Data & model artifacts
-data/
+/data/
 hf_cache/
 runs/
 results/

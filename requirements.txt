@@ -1,0 +1,13 @@
+torch>=2.1.0
+transformers>=4.38.0
+peft>=0.7.0
+datasets>=2.16.0
+accelerate>=0.25.0
+spacy>=3.7.0
+rouge-score>=0.1.2
+omegaconf>=2.3.0
+huggingface_hub>=0.20.0
+wandb>=0.16.0
+pytest>=7.4.0
+tqdm>=4.66.0
+numpy>=1.24.0

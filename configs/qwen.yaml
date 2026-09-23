@@ -1,0 +1,20 @@
+pair_name: qwen
+
+teacher:
+  model_name: Qwen/Qwen1.5-1.8B
+
+student:
+  model_name: Qwen/Qwen1.5-0.5B
+
+mta:
+  word_layers: [14]
+  phrase_layers: [16, 18, 20, 22, 24]
+  lambda_dsa: 2.0
+  lambda_hid: 0.2
+
+train:
+  lr: 1e-4
+  projector_lr: 5e-4
+  epochs: 5
+  batch_size: 16
+  scheduler: cosine

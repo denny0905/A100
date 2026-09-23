@@ -1,0 +1,41 @@
+pair_name: smoke
+smoke: true
+
+smoke_cfg:
+  teacher_n_layer: 8
+  teacher_n_embd: 128
+  teacher_n_head: 4
+  student_n_layer: 4
+  student_n_embd: 64
+  student_n_head: 4
+  train_samples: 32
+  valid_samples: 16
+  test_samples: 8
+  max_len: 128
+  max_new_tokens: 16
+  train_steps: 4
+  sft_steps: 2
+
+data:
+  max_len: 128
+  max_prompt_len: 64
+
+train:
+  epochs: 1
+  batch_size: 4
+  num_workers: 0
+  bf16: false
+
+teacher:
+  epochs: 1
+  batch_size: 4
+
+eval:
+  batch_size: 4
+  max_length: 128
+  max_new_tokens: 16
+  seeds: [42]
+
+mta:
+  word_layers: [2]
+  phrase_layers: [3, 4]

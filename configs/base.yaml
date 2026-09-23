@@ -1,0 +1,3 @@
+# Base config — all defaults come from the structured schema in config.py.
+# Override only what differs per experiment pair.
+pair_name: "gpt2"

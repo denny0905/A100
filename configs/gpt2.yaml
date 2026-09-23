@@ -1,0 +1,23 @@
+pair_name: gpt2
+
+teacher:
+  model_name: gpt2-xl
+
+student:
+  model_name: gpt2
+
+mta:
+  word_layers: [6]
+  phrase_layers: [9, 12]
+  lambda_dsa: 2.0
+  lambda_hid: 0.2
+
+train:
+  lr: 1e-4
+  projector_lr: 5e-4
+  epochs: 5
+  batch_size: 16
+  scheduler: cosine
+
+# DistiLLM-2 overrides (applied when experiment=distillm2*)
+# Batch size 8 is set at runtime in trainer based on experiment name.

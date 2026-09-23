@@ -1,0 +1,45 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Data & model artifacts
+data/
+hf_cache/
+runs/
+results/
+logs/
+checkpoints/
+
+# Environment
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Wandb
+wandb/
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Span cache
+data/spans/

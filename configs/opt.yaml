@@ -1,0 +1,26 @@
+pair_name: opt
+
+teacher:
+  model_name: facebook/opt-6.7b
+
+student:
+  model_name: facebook/opt-1.3b
+
+mta:
+  word_layers: [16]
+  phrase_layers: [18, 20, 22, 24]
+  lambda_dsa: 3.0
+  lambda_hid: 0.3
+
+train:
+  lr: 5e-4
+  projector_lr: 5e-4
+  epochs: 5
+  batch_size: 16
+  scheduler: cosine
+
+lora:
+  enabled: true
+  r: 16
+  alpha: 64
+  dropout: 0.1

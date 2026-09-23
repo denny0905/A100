@@ -1,0 +1,4 @@
+# Install BEFORE requirements.txt so vLLM pulls compatible torch/CUDA
+vllm>=0.4.0
+bitsandbytes>=0.42.0
+hf_transfer>=0.1.4

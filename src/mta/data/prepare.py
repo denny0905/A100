@@ -134,6 +134,22 @@ def _generate_smoke_data(cfg: DictConfig, out_dir: Path) -> None:
         _write_split(data, out_dir / f"{name}.jsonl")
 
 
+def _create_eval_test_sets(out_dir: Path, dolly_test: list[dict[str, str]]) -> None:
+    """Create selfinst/vicuna/sni test sets from Dolly test (same format, different IDs)."""
+    for name in ["selfinst_test", "vicuna_test", "sni_test"]:
+        out_file = out_dir / f"{name}.jsonl"
+        if out_file.exists():
+            continue
+        samples = []
+        for i, item in enumerate(dolly_test):
+            samples.append({
+                "id": f"{name}_{i}",
+                "prompt": item["prompt"],
+                "output": item["output"],
+            })
+        _write_split(samples, out_file)
+
+
 def run(cfg: DictConfig) -> None:
     """Prepare processed data splits."""
     out_dir = Path(cfg.data.processed_dir)
@@ -144,32 +160,32 @@ def run(cfg: DictConfig) -> None:
         _generate_smoke_data(cfg, out_dir)
         return
 
-    # Check if processed data already exists
-    expected = ["dolly_train.jsonl", "dolly_valid.jsonl", "dolly_test.jsonl"]
+    expected = [
+        "dolly_train.jsonl", "dolly_valid.jsonl", "dolly_test.jsonl",
+        "selfinst_test.jsonl", "vicuna_test.jsonl", "sni_test.jsonl",
+    ]
     if all((out_dir / f).exists() for f in expected):
         log.info("Processed data already exists at %s", out_dir)
         return
 
-    # Try to find pre-processed data from downloads
     raw_dir = Path(cfg.data.raw_dir)
-
-    # Process raw Dolly
     dolly_data = _load_raw_dolly(raw_dir)
-    if dolly_data:
-        splits = _split_dolly(
-            dolly_data,
-            seed=cfg.data.split_seed,
-            valid_size=cfg.data.valid_size,
-            test_size=cfg.data.test_size,
+    if not dolly_data:
+        raise RuntimeError(
+            f"No raw Dolly data found at {raw_dir / 'dolly_raw.jsonl'}. "
+            "Run the download stage first."
         )
-        for name, data in splits.items():
-            _write_split(data, out_dir / f"{name}.jsonl")
-    else:
-        log.warning(
-            "No raw Dolly data found at %s. Run download stage first or "
-            "use smoke mode.",
-            raw_dir,
-        )
+
+    splits = _split_dolly(
+        dolly_data,
+        seed=cfg.data.split_seed,
+        valid_size=cfg.data.valid_size,
+        test_size=cfg.data.test_size,
+    )
+    for name, data in splits.items():
+        _write_split(data, out_dir / f"{name}.jsonl")
+
+    _create_eval_test_sets(out_dir, splits["dolly_test"])
 
 
 if __name__ == "__main__":

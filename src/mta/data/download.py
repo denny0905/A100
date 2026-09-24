@@ -43,33 +43,8 @@ def _download_dolly_raw(dest: Path) -> None:
     log.info("Downloaded Dolly: %d samples -> %s", len(ds), out_file)
 
 
-def _try_minillm_processed(raw_dir: Path) -> bool:
-    """Try to download processed data from MiniLLM/DistiLLM HF repos."""
-    try:
-        from huggingface_hub import hf_hub_download
-
-        repo_ids = [
-            "minillm/dolly",
-            "minillm/self-inst",
-            "minillm/vicuna",
-            "minillm/sinst",
-        ]
-        found_any = False
-        for repo_id in repo_ids:
-            try:
-                dest = raw_dir / repo_id.split("/")[-1]
-                _download_from_hub(repo_id, dest)
-                found_any = True
-                log.info("Downloaded %s", repo_id)
-            except Exception:
-                pass
-        return found_any
-    except Exception:
-        return False
-
-
 def run(cfg: DictConfig) -> None:
-    """Download data. Tries processed data first, falls back to raw Dolly."""
+    """Download raw Dolly data."""
     raw_dir = Path(cfg.data.raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
 
@@ -82,13 +57,16 @@ def run(cfg: DictConfig) -> None:
         _download_from_hub(cfg.data.hub_repo, raw_dir)
         return
 
-    log.info("Attempting to download processed data from MiniLLM repos...")
-    if _try_minillm_processed(raw_dir):
-        log.info("Downloaded processed data.")
+    dolly_file = raw_dir / "dolly_raw.jsonl"
+    if dolly_file.exists():
+        log.info("Raw Dolly data already exists at %s", dolly_file)
         return
 
-    log.info("Falling back to raw Dolly download...")
+    log.info("Downloading raw Dolly dataset...")
     _download_dolly_raw(raw_dir)
+
+    if not dolly_file.exists():
+        raise RuntimeError("Failed to download Dolly data.")
 
 
 def push_to_hub(processed_dir: str, repo_id: str) -> None:

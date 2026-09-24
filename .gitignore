@@ -14,10 +14,7 @@ env/
 # Data & model artifacts
 /data/
 hf_cache/
-runs/
-results/
-logs/
-checkpoints/
+
 
 # Environment
 .env

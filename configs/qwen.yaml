@@ -17,12 +17,16 @@ train:
   lr: 1e-4
   projector_lr: 5e-4
   epochs: 5
-  batch_size: 32
+  batch_size: 8
+  grad_accumulation: 4
   scheduler: cosine
   save_steps: 200
 
+loss:
+  chunk_size: 64
+
 eval:
-  batch_size: 24
+  batch_size: 8
 
 distillm2:
-  gen_batch_size: 48
+  gen_batch_size: 16

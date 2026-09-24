@@ -34,7 +34,10 @@ def _train_sft(
     grad_accumulation: int = 1,
 ) -> None:
     collator = InstructionCollator(tokenizer, max_len=train_ds.max_len)
-    loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, collate_fn=collator, drop_last=True)
+    loader_kwargs: dict = dict(batch_size=batch_size, shuffle=True, collate_fn=collator, drop_last=True)
+    if device.type == "cuda":
+        loader_kwargs.update(num_workers=4, pin_memory=True, prefetch_factor=2, persistent_workers=True)
+    loader = DataLoader(train_ds, **loader_kwargs)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     total_steps = len(loader) * epochs // grad_accumulation

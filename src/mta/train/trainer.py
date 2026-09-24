@@ -301,11 +301,16 @@ def run_training(cfg: DictConfig, experiment: str) -> None:
     if base_method == "distillm2":
         batch_size = 8  # Table 9
 
-    train_loader = DataLoader(
-        train_ds, batch_size=batch_size, shuffle=True,
-        num_workers=cfg.train.num_workers, collate_fn=collator,
-        drop_last=True,
+    use_workers = cfg.train.num_workers if cfg.train.num_workers > 0 else 4
+    if cfg.smoke:
+        use_workers = 0
+    loader_kwargs: dict = dict(
+        batch_size=batch_size, shuffle=True, collate_fn=collator, drop_last=True,
+        num_workers=use_workers,
     )
+    if use_workers > 0:
+        loader_kwargs.update(pin_memory=True, prefetch_factor=2, persistent_workers=True)
+    train_loader = DataLoader(train_ds, **loader_kwargs)
 
     # DistiLLM-2: load TGO/SGO data and replace train_loader
     sgo_loader = None
@@ -321,14 +326,8 @@ def run_training(cfg: DictConfig, experiment: str) -> None:
             gen_dir / "sgo.jsonl", tokenizer,
             max_len=cfg.data.max_len, max_prompt_len=cfg.data.max_prompt_len,
         )
-        train_loader = DataLoader(
-            tgo_ds, batch_size=batch_size, shuffle=True,
-            num_workers=cfg.train.num_workers, collate_fn=collator, drop_last=True,
-        )
-        sgo_loader = DataLoader(
-            sgo_ds, batch_size=batch_size, shuffle=True,
-            num_workers=cfg.train.num_workers, collate_fn=collator, drop_last=True,
-        )
+        train_loader = DataLoader(tgo_ds, **loader_kwargs)
+        sgo_loader = DataLoader(sgo_ds, **loader_kwargs)
         if use_mta:
             try:
                 tgo_spans = torch.load(gen_dir / "tgo_spans.pt", weights_only=False)

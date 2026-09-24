@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from dataclasses import dataclass
@@ -15,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 class InstructionDataset(Dataset):
-    """JSONL dataset with prompt/output fields."""
+    """JSONL dataset with prompt/output fields. Tokenizes once and caches to disk."""
 
     def __init__(
         self,
@@ -24,42 +25,70 @@ class InstructionDataset(Dataset):
         max_len: int = 512,
         max_prompt_len: int = 256,
     ) -> None:
-        self.tokenizer = tokenizer
         self.max_len = max_len
         self.max_prompt_len = max_prompt_len
-        self.data = self._load(Path(path))
+        path = Path(path)
+
+        cache_path = self._cache_path(path, tokenizer, max_len, max_prompt_len)
+        if cache_path.exists():
+            log.info("Loading cached tokenized data from %s", cache_path)
+            cached = torch.load(cache_path, weights_only=False)
+            self.tokens = cached["tokens"]
+            self.full_texts = cached["full_texts"]
+        else:
+            log.info("Pre-tokenizing %s ...", path)
+            raw = self._load(path)
+            self.tokens, self.full_texts = self._tokenize_all(raw, tokenizer)
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save({"tokens": self.tokens, "full_texts": self.full_texts}, cache_path)
+            log.info("Cached %d samples to %s", len(self.tokens), cache_path)
+
+    @staticmethod
+    def _cache_path(path: Path, tokenizer: Any, max_len: int, max_prompt_len: int) -> Path:
+        key = f"{path.name}_{getattr(tokenizer, 'name_or_path', 'unk')}_{max_len}_{max_prompt_len}"
+        h = hashlib.md5(key.encode()).hexdigest()[:8]
+        return path.parent / f".cache_{path.stem}_{h}.pt"
 
     def _load(self, path: Path) -> list[dict[str, str]]:
         with path.open("r", encoding="utf-8") as f:
             return [json.loads(line) for line in f if line.strip()]
 
+    def _tokenize_all(self, data: list[dict[str, str]], tokenizer: Any) -> tuple[list[dict], list[str]]:
+        tokens = []
+        full_texts = []
+        for item in data:
+            prompt = item["prompt"]
+            output = item["output"]
+
+            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+            output_ids = tokenizer.encode(output, add_special_tokens=False)
+
+            if len(prompt_ids) > self.max_prompt_len:
+                prompt_ids = prompt_ids[: self.max_prompt_len]
+
+            max_output_len = self.max_len - len(prompt_ids)
+            if max_output_len <= 0:
+                max_output_len = 1
+            if len(output_ids) > max_output_len:
+                output_ids = output_ids[:max_output_len]
+
+            input_ids = prompt_ids + output_ids
+            tokens.append({
+                "input_ids": torch.tensor(input_ids, dtype=torch.long),
+                "prompt_length": len(prompt_ids),
+            })
+            full_texts.append(prompt + output)
+        return tokens, full_texts
+
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self.tokens)
 
-    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
-        item = self.data[idx]
-        prompt = item["prompt"]
-        output = item["output"]
-
-        prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=False)
-        output_ids = self.tokenizer.encode(output, add_special_tokens=False)
-
-        if len(prompt_ids) > self.max_prompt_len:
-            prompt_ids = prompt_ids[: self.max_prompt_len]
-
-        max_output_len = self.max_len - len(prompt_ids)
-        if max_output_len <= 0:
-            max_output_len = 1
-        if len(output_ids) > max_output_len:
-            output_ids = output_ids[:max_output_len]
-
-        input_ids = prompt_ids + output_ids
-        prompt_length = len(prompt_ids)
-
+    def __getitem__(self, idx: int) -> dict[str, Any]:
+        t = self.tokens[idx]
         return {
-            "input_ids": torch.tensor(input_ids, dtype=torch.long),
-            "prompt_length": prompt_length,
-            "full_text": prompt + output,
+            "input_ids": t["input_ids"],
+            "prompt_length": t["prompt_length"],
+            "full_text": self.full_texts[idx],
         }
 
 

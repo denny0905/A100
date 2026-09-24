@@ -2,10 +2,17 @@ pair_name: opt
 
 teacher:
   model_name: facebook/opt-6.7b
-  lr: 5e-5
-  epochs: 10
-  batch_size: 8
-  grad_accumulation: 4
+  lr: 2e-4
+  epochs: 3
+  batch_size: 32
+  grad_accumulation: 2
+  use_lora: true
+
+lora:
+  r: 16
+  alpha: 64
+  dropout: 0.1
+  target_modules: [q_proj, v_proj]
 
 data:
   max_len: 512

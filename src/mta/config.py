@@ -45,10 +45,11 @@ class TeacherConfig:
     path: Optional[str] = None  # skip SFT if provided
     push_repo: Optional[str] = None
     lr: float = 5e-5
-    epochs: int = 10
+    epochs: int = 3
     batch_size: int = 16
     grad_accumulation: int = 1
     max_grad_norm: float = 1.0
+    use_lora: bool = False
 
 
 @dataclass

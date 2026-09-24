@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from mta.data.dataset import InstructionCollator, InstructionDataset
-from mta.models.loading import load_model, load_smoke_models, load_tokenizer
+from mta.models.loading import apply_lora, load_model, load_smoke_models, load_tokenizer
 from mta.utils.seed import set_seed
 
 log = logging.getLogger(__name__)
@@ -118,6 +118,10 @@ def train_sft_teacher(cfg: DictConfig) -> None:
         load_dtype = torch.bfloat16 if use_bf16 else torch.float32
         teacher = load_model(cfg.teacher.model_name, dtype=load_dtype)
 
+    if cfg.teacher.use_lora and not cfg.smoke:
+        teacher = apply_lora(teacher, cfg.lora)
+        log.info("Applied LoRA to teacher for SFT")
+
     if cfg.train.grad_checkpointing:
         teacher.gradient_checkpointing_enable()
         log.info("Enabled gradient checkpointing for teacher SFT")
@@ -152,6 +156,15 @@ def train_sft_teacher(cfg: DictConfig) -> None:
         max_steps=max_steps,
         grad_accumulation=cfg.teacher.grad_accumulation,
     )
+
+    if cfg.teacher.use_lora and not cfg.smoke:
+        log.info("Merging LoRA weights into base model...")
+        teacher = teacher.merge_and_unload()
+        for sub in ("best", "last"):
+            p = out_dir / sub
+            if p.exists():
+                teacher.save_pretrained(p)
+                log.info("Saved merged model to %s", p)
 
     if cfg.teacher.push_repo:
         from huggingface_hub import HfApi

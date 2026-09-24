@@ -18,3 +18,4 @@ train:
   epochs: 5
   batch_size: 16
   scheduler: cosine
+  save_steps: 200

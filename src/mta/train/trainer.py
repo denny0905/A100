@@ -535,6 +535,17 @@ def run_training(cfg: DictConfig, experiment: str) -> None:
             global_step += 1
             step_in_epoch += 1
 
+            if cfg.train.save_steps > 0 and global_step % cfg.train.save_steps == 0:
+                extra_mid = {}
+                if replay_buffer:
+                    extra_mid["replay_buffer"] = replay_buffer.state_dict()
+                if distillm2_loss is not None:
+                    extra_mid["distillm2_loss"] = distillm2_loss.state_dict_extra()
+                _save_checkpoint(
+                    out_dir / "last", student, optimizer, scheduler, mta_loss_mod,
+                    epoch, global_step, best_metric, extra_mid,
+                )
+
         avg_loss = epoch_loss / max(step_in_epoch, 1)
         log.info("Epoch %d: avg_loss=%.4f", epoch, avg_loss)
 

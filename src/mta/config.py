@@ -117,6 +117,7 @@ class TrainConfig:
     val_do_sample: bool = False
     resume: str = "auto"  # "auto" | "none" | path
     use_8bit_optim: bool = False  # requires bitsandbytes
+    save_steps: int = 500  # save checkpoint every N steps; 0 = end-of-epoch only
 
 
 @dataclass

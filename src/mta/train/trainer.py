@@ -399,7 +399,7 @@ def run_training(cfg: DictConfig, experiment: str) -> None:
             response_mask = batch["response_mask"].to(device)
 
             # Forward
-            with torch.cuda.amp.autocast(enabled=use_bf16, dtype=torch.bfloat16):
+            with torch.amp.autocast("cuda", enabled=use_bf16, dtype=torch.bfloat16):
                 s_out = student(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -434,7 +434,7 @@ def run_training(cfg: DictConfig, experiment: str) -> None:
                 sgo_resp_mask = sgo_batch["response_mask"].to(device)
 
                 # Forward on SGO
-                with torch.cuda.amp.autocast(enabled=use_bf16, dtype=torch.bfloat16):
+                with torch.amp.autocast("cuda", enabled=use_bf16, dtype=torch.bfloat16):
                     s_sgo_out = student(
                         input_ids=sgo_ids, attention_mask=sgo_mask,
                         output_hidden_states=need_hidden,

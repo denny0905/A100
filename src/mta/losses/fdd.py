@@ -46,15 +46,18 @@ class FDDLoss(nn.Module):
         model: nn.Module,
     ) -> torch.Tensor:
         """Apply logit lens: optional final_norm then lm_head, then log_softmax."""
-        h = hidden.float()
+        h = hidden
         if self.apply_final_norm and hasattr(model, "transformer"):
-            h = model.transformer.ln_f(h)
+            h = model.transformer.ln_f(h.to(model.transformer.ln_f.weight.dtype))
         elif self.apply_final_norm and hasattr(model, "model"):
             if hasattr(model.model, "norm"):
-                h = model.model.norm(h)
+                h = model.model.norm(h.to(model.model.norm.weight.dtype))
             elif hasattr(model.model, "final_layernorm"):
-                h = model.model.final_layernorm(h)
-        logits = model.lm_head(h) if hasattr(model, "lm_head") else h
+                h = model.model.final_layernorm(h.to(model.model.final_layernorm.weight.dtype))
+        if hasattr(model, "lm_head"):
+            logits = model.lm_head(h.to(model.lm_head.weight.dtype))
+        else:
+            logits = h
         return F.log_softmax(logits.float(), dim=-1)
 
     def forward(

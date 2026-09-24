@@ -68,7 +68,7 @@ def _train_sft(
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
 
-            with torch.cuda.amp.autocast(enabled=use_bf16, dtype=torch.bfloat16):
+            with torch.amp.autocast("cuda", enabled=use_bf16, dtype=torch.bfloat16):
                 out = model(input_ids=input_ids, attention_mask=attention_mask)
                 loss = nn.functional.cross_entropy(
                     out.logits.view(-1, out.logits.shape[-1]),

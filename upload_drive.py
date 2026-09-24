@@ -1,4 +1,4 @@
-"""Upload results folder to Google Drive using a service account."""
+"""Upload folders to Google Drive using access token or service account."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import logging
 import mimetypes
 from pathlib import Path
 
-from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
@@ -16,8 +15,15 @@ log = logging.getLogger(__name__)
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
-def get_service(creds_json: str):
-    creds = Credentials.from_service_account_file(creds_json, scopes=SCOPES)
+def get_service_token(token: str):
+    from google.oauth2.credentials import Credentials
+    creds = Credentials(token=token)
+    return build("drive", "v3", credentials=creds)
+
+
+def get_service_sa(creds_json: str):
+    from google.oauth2.service_account import Credentials as SACreds
+    creds = SACreds.from_service_account_file(creds_json, scopes=SCOPES)
     return build("drive", "v3", credentials=creds)
 
 
@@ -27,13 +33,6 @@ def create_folder(service, name: str, parent_id: str | None = None) -> str:
         meta["parents"] = [parent_id]
     folder = service.files().create(body=meta, fields="id").execute()
     return folder["id"]
-
-
-def set_public_edit(service, file_id: str) -> None:
-    service.permissions().create(
-        fileId=file_id,
-        body={"type": "anyone", "role": "writer"},
-    ).execute()
 
 
 def upload_file(service, local_path: Path, parent_id: str) -> str:
@@ -54,15 +53,15 @@ def upload_folder(service, local_dir: Path, parent_id: str) -> None:
             upload_folder(service, item, sub_id)
         else:
             upload_file(service, item, parent_id)
-            log.info("Uploaded: %s", item.relative_to(local_dir.parent))
+            log.info("Uploaded: %s", item)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Upload results to Google Drive")
-    parser.add_argument("--creds", required=True, help="Path to service account JSON key")
-    parser.add_argument("--folder", default="results", help="Local folder to upload")
-    parser.add_argument("--drive-id", default=None, help="Existing Drive folder ID to upload into")
-    parser.add_argument("--drive-name", default=None, help="Name for a new Drive folder (ignored if --drive-id is set)")
+    parser = argparse.ArgumentParser(description="Upload folder to Google Drive")
+    parser.add_argument("--token", help="OAuth2 access token (from OAuth Playground)")
+    parser.add_argument("--creds", help="Path to service account JSON key")
+    parser.add_argument("--folder", required=True, help="Local folder to upload")
+    parser.add_argument("--drive-id", required=True, help="Drive folder ID to upload into")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -72,24 +71,19 @@ def main() -> None:
         log.error("Folder not found: %s", local)
         return
 
-    service = get_service(args.creds)
-
-    if args.drive_id:
-        root_id = args.drive_id
-        log.info("Uploading to existing folder: %s", root_id)
+    if args.token:
+        service = get_service_token(args.token)
+    elif args.creds:
+        service = get_service_sa(args.creds)
     else:
-        drive_name = args.drive_name or local.name
-        root_id = create_folder(service, drive_name)
-        set_public_edit(service, root_id)
-        log.info("Created shared folder: %s", drive_name)
+        log.error("Provide --token or --creds")
+        return
 
-    upload_folder(service, local, root_id)
+    sub_id = create_folder(service, local.name, args.drive_id)
+    log.info("Uploading %s ...", local)
+    upload_folder(service, local, sub_id)
 
-    link = f"https://drive.google.com/drive/folders/{root_id}"
-    log.info("Done! Link: %s", link)
-    print(f"\n{'='*60}")
-    print(f"Google Drive link: {link}")
-    print(f"{'='*60}")
+    log.info("Done! Uploaded to https://drive.google.com/drive/folders/%s", args.drive_id)
 
 
 if __name__ == "__main__":

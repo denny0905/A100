@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+import sys
 from pathlib import Path
 
 import torch
@@ -36,7 +37,10 @@ def _train_sft(
     collator = InstructionCollator(tokenizer, max_len=train_ds.max_len)
     loader_kwargs: dict = dict(batch_size=batch_size, shuffle=True, collate_fn=collator, drop_last=True)
     if device.type == "cuda":
-        loader_kwargs.update(num_workers=4, pin_memory=True, prefetch_factor=2, persistent_workers=True)
+        nw = 0 if sys.platform == "win32" else 4
+        loader_kwargs.update(num_workers=nw, pin_memory=True)
+        if nw > 0:
+            loader_kwargs.update(prefetch_factor=2, persistent_workers=True)
     loader = DataLoader(train_ds, **loader_kwargs)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -114,11 +118,22 @@ def train_sft_teacher(cfg: DictConfig) -> None:
         load_dtype = torch.bfloat16 if use_bf16 else torch.float32
         teacher = load_model(cfg.teacher.model_name, dtype=load_dtype)
 
+    if cfg.train.grad_checkpointing:
+        teacher.gradient_checkpointing_enable()
+        log.info("Enabled gradient checkpointing for teacher SFT")
+
     teacher.to(device)
 
     processed_dir = Path(cfg.data.processed_dir)
+    train_file = processed_dir / "dolly_train.jsonl"
+    if not train_file.exists():
+        raise FileNotFoundError(
+            f"Training data not found: {train_file}. "
+            "Run the 'data' stage first: python -m mta.pipeline --config <cfg> --only data"
+        )
+
     train_ds = InstructionDataset(
-        processed_dir / "dolly_train.jsonl", tokenizer,
+        train_file, tokenizer,
         max_len=cfg.data.max_len, max_prompt_len=cfg.data.max_prompt_len,
     )
 

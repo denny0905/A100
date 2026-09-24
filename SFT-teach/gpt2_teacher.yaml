@@ -1,0 +1,16 @@
+pair_name: gpt2
+
+teacher:
+  model_name: gpt2-xl
+  lr: 5e-5
+  epochs: 10
+  batch_size: 64
+  grad_accumulation: 1
+
+data:
+  max_len: 512
+
+train:
+  bf16: true
+  seed: 42
+  num_workers: 4

@@ -1,0 +1,17 @@
+pair_name: opt
+
+teacher:
+  model_name: facebook/opt-6.7b
+  lr: 5e-5
+  epochs: 10
+  batch_size: 8
+  grad_accumulation: 4
+
+data:
+  max_len: 512
+
+train:
+  bf16: true
+  grad_checkpointing: true
+  seed: 42
+  num_workers: 4

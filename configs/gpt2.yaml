@@ -2,6 +2,7 @@ pair_name: gpt2
 
 teacher:
   model_name: gpt2-xl
+  batch_size: 32
 
 student:
   model_name: gpt2
@@ -16,6 +17,12 @@ train:
   lr: 1e-4
   projector_lr: 5e-4
   epochs: 5
-  batch_size: 16
+  batch_size: 48
   scheduler: cosine
   save_steps: 200
+
+eval:
+  batch_size: 32
+
+distillm2:
+  gen_batch_size: 64

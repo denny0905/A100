@@ -2,6 +2,7 @@ pair_name: opt
 
 teacher:
   model_name: facebook/opt-6.7b
+  path: "runs/opt/sft_teacher/best"
 
 student:
   model_name: facebook/opt-1.3b
@@ -16,8 +17,14 @@ train:
   lr: 5e-4
   projector_lr: 5e-4
   epochs: 5
-  batch_size: 16
+  batch_size: 20
+  grad_accumulation: 2
+  grad_checkpointing: true
   scheduler: cosine
+  save_steps: 200
+
+eval:
+  batch_size: 16
 
 lora:
   enabled: true

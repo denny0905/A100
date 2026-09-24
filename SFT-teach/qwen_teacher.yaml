@@ -1,0 +1,16 @@
+pair_name: qwen
+
+teacher:
+  model_name: Qwen/Qwen1.5-1.8B
+  lr: 5e-5
+  epochs: 10
+  batch_size: 48
+  grad_accumulation: 1
+
+data:
+  max_len: 512
+
+train:
+  bf16: true
+  seed: 42
+  num_workers: 4

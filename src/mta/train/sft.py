@@ -31,12 +31,13 @@ def _train_sft(
     out_dir: Path,
     use_bf16: bool = False,
     max_steps: int | None = None,
+    grad_accumulation: int = 1,
 ) -> None:
     collator = InstructionCollator(tokenizer, max_len=train_ds.max_len)
     loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, collate_fn=collator, drop_last=True)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-    total_steps = len(loader) * epochs
+    total_steps = len(loader) * epochs // grad_accumulation
     if max_steps:
         total_steps = max_steps
 
@@ -68,15 +69,17 @@ def _train_sft(
                     ignore_index=-100,
                 )
 
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-            optimizer.step()
-            scheduler.step()
-            optimizer.zero_grad()
+            (loss / grad_accumulation).backward()
+
+            if (n_steps + 1) % grad_accumulation == 0:
+                nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+                global_step += 1
 
             total_loss += loss.item()
             n_steps += 1
-            global_step += 1
 
         avg = total_loss / max(n_steps, 1)
         log.info("SFT Epoch %d: loss=%.4f", epoch, avg)
@@ -105,7 +108,8 @@ def train_sft_teacher(cfg: DictConfig) -> None:
         tokenizer, teacher, _ = load_smoke_models(cfg)
     else:
         tokenizer = load_tokenizer(cfg.teacher.model_name)
-        teacher = load_model(cfg.teacher.model_name, dtype=torch.float32)
+        load_dtype = torch.bfloat16 if use_bf16 else torch.float32
+        teacher = load_model(cfg.teacher.model_name, dtype=load_dtype)
 
     teacher.to(device)
 
@@ -128,6 +132,7 @@ def train_sft_teacher(cfg: DictConfig) -> None:
         out_dir=out_dir,
         use_bf16=use_bf16,
         max_steps=max_steps,
+        grad_accumulation=cfg.teacher.grad_accumulation,
     )
 
     if cfg.teacher.push_repo:

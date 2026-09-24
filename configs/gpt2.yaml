@@ -18,6 +18,3 @@ train:
   epochs: 5
   batch_size: 16
   scheduler: cosine
-
-# DistiLLM-2 overrides (applied when experiment=distillm2*)
-# Batch size 8 is set at runtime in trainer based on experiment name.

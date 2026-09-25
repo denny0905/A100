@@ -40,11 +40,17 @@ def run_eval(cfg: DictConfig, experiment: str) -> None:
             ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
             student.load_state_dict(ckpt["student"])
     else:
-        if model_dir.exists() and (model_dir / "config.json").exists():
+        tokenizer = load_tokenizer(cfg.student.model_name)
+        ckpt_path = model_dir / "checkpoint.pt"
+        if ckpt_path.exists():
+            student = AutoModelForCausalLM.from_pretrained(cfg.student.model_name)
+            ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
+            student.load_state_dict(ckpt["student"])
+            log.info("Loaded trained checkpoint from %s", ckpt_path)
+        elif model_dir.exists() and (model_dir / "config.json").exists():
             tokenizer = AutoTokenizer.from_pretrained(model_dir)
             student = AutoModelForCausalLM.from_pretrained(model_dir)
         else:
-            tokenizer = load_tokenizer(cfg.student.model_name)
             student = AutoModelForCausalLM.from_pretrained(cfg.student.model_name)
             log.warning("No trained model found at %s, using pretrained", model_dir)
 
